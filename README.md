@@ -1,6 +1,6 @@
 # Choice Models
 
-This is a fork of [Takao's github repo](https://github.com/tkngch/choice-models):
+**This is a fork of [Takao's github repo](https://github.com/tkngch/choice-models).**
 
 Psychological models of decision making are hosted here.
 
