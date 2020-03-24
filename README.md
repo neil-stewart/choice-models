@@ -1,5 +1,7 @@
 # Choice Models
 
+This is a fork of [Takao's github repo](https://github.com/tkngch/choice-models):
+
 Psychological models of decision making are hosted here.
 
 * aam: Associative Accumulation Model.
