@@ -1,0 +1,159 @@
+
+R version 4.2.2 (2022-10-31) -- "Innocent and Trusting"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[0;38;5;11mnormal[0m [0;38;5;13mx[x<=-0.0001][0m [0;38;5;51mx[abs(x)<0.0001][0m [0;38;5;10mx[x>=0.0001][0m [0;38;5;179m19/01/2038 03:14:07[0m [0;38;5;85m"string"[0m
+[0;38;5;35mNA/NaN/NULL[0m [0;38;5;203mFALSE[0m [0;38;5;78mTRUE[0m [0;38;5;39mInf[0m [0;38;5;30m[index][0m [0;48;5;15;38;5;4mstderror[0m [0;48;5;15;38;5;4mwarn[0m [0;48;5;15;38;5;196merror[0m
+> # Code to reproduce Figure 8 from Noguchi and Stewart (2018)
+> # Copyright Neil Stewart 2022
+> # This program is free software: you can redistribute it and/or modify it under
+> # the terms of the GNU General Public License as published by the Free Software
+> # Foundation, either version 3 of the License, or any later version.
+> 
+> library(data.table)
+> library(ggplot2)
+> sessionInfo()
+R version 4.2.2 (2022-10-31)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Debian GNU/Linux 11 (bullseye)
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.9.0
+LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.9.0
+
+locale:
+ [1] LC_CTYPE=en_GB.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_GB.UTF-8        LC_COLLATE=en_GB.UTF-8    
+ [5] LC_MONETARY=en_GB.UTF-8    LC_MESSAGES=en_GB.UTF-8   
+ [7] LC_PAPER=en_GB.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_GB.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] ggplot2_3.3.5     data.table_1.14.2 colorout_1.2-2   
+
+loaded via a namespace (and not attached):
+ [1] magrittr_2.0.3   tidyselect_1.1.2 munsell_0.5.0    colorspace_2.0-3
+ [5] R6_2.5.1         rlang_1.0.2      fansi_1.0.3      dplyr_1.0.9     
+ [9] grid_4.2.2       gtable_0.3.0     utf8_1.2.2       cli_3.3.0       
+[13] DBI_1.1.2        withr_2.5.0      ellipsis_0.3.2   assertthat_0.2.1
+[17] tibble_3.1.6     lifecycle_1.0.1  crayon_1.5.1     purrr_0.3.4     
+[21] vctrs_0.4.1      glue_1.6.2       compiler_4.2.2   pillar_1.7.0    
+[25] generics_0.1.2   scales_1.2.0     pkgconfig_2.0.3 
+> 
+> 
+> 
+> # Data from the 353 participants from Noguchi and Stewart (2018) Figure 8
+> data <- fread("data_from_Takao.csv")
+> nrow(unique(data[, .(participant_id)]))
+[1] 353
+> 
+> data[, choice_type:=factor(choice_type, levels=c("pairwise", "attraction", "compromise", "similarity"))]
+> 
+> 
+> 
+> # Each row is a choice
+> data[, freq:=1]
+> 
+> 
+> 
+> # Add rows with zero frequency for choices the participant had but didn't make
+> choices <- unique(data[, .(choice_type, choice)])[order(choice_type, choice)]
+> trials <- unique(data[, .(participant_id, choice_type, third_alternative)])[order(participant_id, choice_type, third_alternative)]
+> skeleton <- merge(trials, choices, by=c("choice_type"), allow.cartesian=TRUE)[order(participant_id, choice_type, third_alternative, choice)]
+> all <- merge(data, skeleton, by=c("participant_id", "choice_type", "third_alternative", "choice"), all=TRUE)
+> all[is.na(freq), freq:=0]
+> 
+> 
+> 
+> # Calculate proportions of choices for each participant
+> freqs <- all[, .(freq=sum(freq)), by=.(participant_id, choice_type, third_alternative, choice)]
+> freqs[, total:=sum(freq), by=.(participant_id, choice_type, third_alternative)]
+> freqs[,prop:=freq/total]
+> 
+> 
+> 
+> # Average over participants to get means for each type of choice
+> means <- freqs[, .(prop=mean(prop), sd=sd(prop), N=length(prop)), by=.(choice_type, third_alternative, choice)]
+> 
+> 
+> 
+> # Plot Figure 8 replication
+> means[, se:=sd/sqrt(N)]
+> means[, lower:=prop-1.96*se]
+> means[, upper:=prop+1.96*se]
+> 
+> means[,x:=ifelse(choice %in% c("A", "B"), choice, third_alternative)]
+> means[,x:=factor(x, levels=c("Da", "Ca", "Sa", "A", "B", "Db", "Cb", "Sb"))]
+> 
+> means
+    choice_type third_alternative choice       prop        sd   N         se
+ 1:    pairwise                        A 0.52502361 0.2707667 353 0.01441146
+ 2:    pairwise                        B 0.47497639 0.2707667 353 0.01441146
+ 3:  attraction                Db      A 0.37569061 0.4856441 181 0.03609764
+ 4:  attraction                Db      B 0.57458564 0.4957771 181 0.03685082
+ 5:  attraction                Db      T 0.04972376 0.2179766 181 0.01620208
+ 6:  compromise                Ca      A 0.45856354 0.4996623 181 0.03713960
+ 7:  compromise                Ca      B 0.24309392 0.4301412 181 0.03197215
+ 8:  compromise                Ca      T 0.29834254 0.4587998 181 0.03410232
+ 9:  similarity                Sa      A 0.43274854 0.4969117 171 0.03799979
+10:  similarity                Sa      B 0.28654971 0.4534772 171 0.03467827
+11:  similarity                Sa      T 0.28070175 0.4506617 171 0.03446296
+12:  attraction                Da      A 0.56976744 0.4965542 172 0.03786190
+13:  attraction                Da      B 0.35465116 0.4798043 172 0.03658473
+14:  attraction                Da      T 0.07558140 0.2650989 172 0.02021360
+15:  similarity                Sb      A 0.35164835 0.4788021 182 0.03549117
+16:  similarity                Sb      B 0.41758242 0.4945210 182 0.03665634
+17:  similarity                Sb      T 0.23076923 0.4224873 182 0.03131684
+18:  compromise                Cb      A 0.33139535 0.4720892 172 0.03599646
+19:  compromise                Cb      B 0.40697674 0.4927048 172 0.03756839
+20:  compromise                Cb      T 0.26162791 0.4408043 172 0.03361101
+         lower      upper  x
+ 1: 0.49677715 0.55327006  A
+ 2: 0.44672994 0.50322285  B
+ 3: 0.30493923 0.44644199  A
+ 4: 0.50235802 0.64681325  B
+ 5: 0.01796769 0.08147982 Db
+ 6: 0.38576991 0.53135716  A
+ 7: 0.18042852 0.30575933  B
+ 8: 0.23150200 0.36518309 Ca
+ 9: 0.35826896 0.50722812  A
+10: 0.21858030 0.35451911  B
+11: 0.21315435 0.34824916 Sa
+12: 0.49555812 0.64397676  A
+13: 0.28294508 0.42635724  B
+14: 0.03596273 0.11520006 Da
+15: 0.28208566 0.42121104  A
+16: 0.34573600 0.48942884  B
+17: 0.16938822 0.29215024 Sb
+18: 0.26084228 0.40194842  A
+19: 0.33334270 0.48061079  B
+20: 0.19575032 0.32750549 Cb
+> 
+> ggplot(means, aes(x=x, y=prop, ymin=lower, ymax=upper, col=third_alternative, group=third_alternative)) + geom_point() + facet_wrap(~choice_type, scales="free_x", ncol=4) + guides(col="none") + ylim(0,0.65) + labs(y="Choice Proportion", x="Choice") + geom_errorbar(width=0.2) + geom_line()
+> ggsave("figure_8.pdf")
+Saving 7 x 7 in image
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.857   0.060   1.805 
